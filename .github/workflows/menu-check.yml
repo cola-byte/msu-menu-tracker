@@ -2,7 +2,7 @@ name: MSU Menu Check
 
 on:
   schedule:
-    - cron: '0 8 * * 1'  # 每週一 08:00 UTC（台灣時間週一下午 4:00）
+    - cron: '0 12 * * 1'  # 每週一 08:00 AM EDT（UTC-4，Lansing 時間）
   workflow_dispatch:      # 允許手動觸發
 
 jobs:
