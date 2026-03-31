@@ -1,0 +1,27 @@
+name: MSU Menu Check
+
+on:
+  schedule:
+    - cron: '0 8 * * 1'  # 每週一 08:00 UTC（台灣時間週一下午 4:00）
+  workflow_dispatch:      # 允許手動觸發
+
+jobs:
+  check-menu:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run menu scraper
+        env:
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          NOTIFY_TO: ${{ secrets.NOTIFY_TO }}
+        run: python scraper.py
