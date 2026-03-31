@@ -70,7 +70,7 @@ def check_dates():
         matches = find_item_at_station(soup)
 
         if matches:
-            friendly = check_date.strftime("%A, %B %#d")
+            friendly = f"{check_date.strftime('%A, %B')} {check_date.day}"
             results.append((friendly, matches))
             for key, items in matches.items():
                 print(f"  Found: {friendly} — {key}: {', '.join(items)}")
