@@ -8,6 +8,8 @@ on:
 jobs:
   check-menu:
     runs-on: ubuntu-latest
+    env:
+      TZ: America/Detroit
 
     steps:
       - uses: actions/checkout@v4
@@ -24,5 +26,4 @@ jobs:
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           NOTIFY_TO: ${{ secrets.NOTIFY_TO }}
-          TZ: America/Detroit
         run: python scraper.py
