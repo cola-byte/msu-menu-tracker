@@ -17,7 +17,7 @@ NOTIFY_TO = os.getenv("NOTIFY_TO")
 BASE_URL = "https://eatatstate.msu.edu/menu/The%20Gallery%20at%20Snyder%20Phillips/all/{}"
 DAYS_AHEAD = 7
 TARGET_STATION = ""
-TARGET_ITEM = "Chocolate Cake"
+TARGET_ITEM = "Cheese Cake"  # e.g. "Chocolate Cake", "Pizza", or "Pasta"
 TARGET_MEALS = []  # e.g. ["Breakfast"], ["Lunch", "Dinner"], or [] for all
 
 
