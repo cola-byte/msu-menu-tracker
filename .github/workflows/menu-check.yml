@@ -18,6 +18,11 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Debug time
+        run: |
+          date
+          python -c "from datetime import date; print('date.today():', date.today())"
+
       - name: Install dependencies
         run: pip install -r requirements.txt
 

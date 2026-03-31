@@ -93,7 +93,7 @@ def send_email(results):
     body = "\n".join(lines)
 
     msg = MIMEText(body)
-    msg["Subject"] = f"MSU Menu Alert: {TARGET_ITEM} – Week of {date.today().strftime('%B')} {date.today().day}"
+    msg["Subject"] = f"MSU Menu Alert: {TARGET_ITEM}"
     msg["From"] = GMAIL_USER
     recipients = [r.strip() for r in NOTIFY_TO.split(",")]
     msg["To"] = ", ".join(recipients)
