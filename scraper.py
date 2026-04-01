@@ -34,7 +34,7 @@ LOCATIONS = [
 ]
 DAYS_AHEAD = 7  # e.g. 7 (check one week ahead), 14 (two weeks)
 TARGET_STATION = ""  # e.g. "Grill", "Desserts", or "" for all stations
-TARGET_ITEMS = ["Cheese Cake"]  # e.g. ["Chocolate Cake"], ["BBQ", "Pizza"] (case-insensitive partial match)
+TARGET_ITEMS = ["Cheesecake", "Cheese Cake"]  # e.g. ["Chocolate Cake"], ["BBQ", "Pizza"] (case-insensitive exact match)
 TARGET_MEALS = ["lunch"]  # e.g. ["Lunch"], ["Lunch", "Dinner"], or [] for all meals
 
 
@@ -60,7 +60,7 @@ def find_items_at_station(soup):
 
             for title_div in eas_list.find_all("div", class_="meal-title"):
                 item_name = title_div.get_text(strip=True)
-                if any(t.lower() in item_name.lower() for t in TARGET_ITEMS):
+                if any(t.lower() == item_name.lower() for t in TARGET_ITEMS):
                     key = f"{station_name} / {period}"
                     matches.setdefault(key, []).append(item_name)
 
