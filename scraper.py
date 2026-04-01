@@ -3,6 +3,7 @@ import smtplib
 import sys
 from datetime import date, timedelta
 from email.mime.text import MIMEText
+from urllib.parse import quote
 
 import requests
 from bs4 import BeautifulSoup
@@ -14,7 +15,22 @@ GMAIL_USER = os.getenv("GMAIL_USER")
 GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD")
 NOTIFY_TO = os.getenv("NOTIFY_TO")
 
-BASE_URL = "https://eatatstate.msu.edu/menu/The%20Gallery%20at%20Snyder%20Phillips/all/{}"
+BASE_URL_TEMPLATE = "https://eatatstate.msu.edu/menu/{}/all/{}"
+LOCATIONS = [
+    "The Gallery at Snyder Phillips",
+    "Brody Square",
+    "South Pointe at Case",
+    "Heritage Commons at Landon",
+    "The Vista at Shaw",
+    "Thrive at Owen",
+    "The Edge at Akers",
+    "The Workshop",
+    "The Sandbox",
+    "The State Room at Kellogg",
+    "Sparty's Market",
+    "Sparty's Market at Holden",
+    "Sparty's Market at Holmes",
+]
 DAYS_AHEAD = 7
 TARGET_STATION = ""
 TARGET_ITEM = "Chocolate Cake"
@@ -50,30 +66,36 @@ def find_item_at_station(soup):
 
 
 def check_dates():
-    """Check the next DAYS_AHEAD days and return list of (date_str, [meal_periods])."""
+    """Check the next DAYS_AHEAD days across all LOCATIONS."""
     results = []
     today = date.today()
 
     for i in range(DAYS_AHEAD):
         check_date = today + timedelta(days=i)
         date_str = check_date.strftime("%Y-%m-%d")
-        url = BASE_URL.format(date_str)
+        friendly = check_date.strftime("%A, %B %#d")
+        day_matches = {}
 
-        try:
-            response = requests.get(url, timeout=10)
-            response.raise_for_status()
-        except requests.RequestException as e:
-            print(f"Failed to fetch {date_str}: {e}")
-            continue
+        for location in LOCATIONS:
+            url = BASE_URL_TEMPLATE.format(quote(location, safe=""), date_str)
 
-        soup = BeautifulSoup(response.text, "html.parser")
-        matches = find_item_at_station(soup)
+            try:
+                response = requests.get(url, timeout=10)
+                response.raise_for_status()
+            except requests.RequestException as e:
+                print(f"Failed to fetch {location} on {date_str}: {e}")
+                continue
 
-        if matches:
-            friendly = check_date.strftime("%A, %B %#d")
-            results.append((friendly, matches))
+            soup = BeautifulSoup(response.text, "html.parser")
+            matches = find_item_at_station(soup)
+
             for key, items in matches.items():
-                print(f"  Found: {friendly} — {key}: {', '.join(items)}")
+                full_key = f"{location} > {key}"
+                day_matches[full_key] = items
+                print(f"  Found: {friendly} — {full_key}: {', '.join(items)}")
+
+        if day_matches:
+            results.append((friendly, day_matches))
         else:
             print(f"  No target items found: {date_str}")
 
