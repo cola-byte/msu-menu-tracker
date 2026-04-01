@@ -32,10 +32,10 @@ LOCATIONS = [
     "Sparty's Market at Holden",
     "Sparty's Market at Holmes",
 ]
-DAYS_AHEAD = 7
-TARGET_STATION = ""
-TARGET_ITEMS = ["Chocolate Cake"]  # e.g. ["Chocolate Cake", "BBQ", "Pizza"]
-TARGET_MEALS = []  # e.g. ["Breakfast"], ["Lunch", "Dinner"], or [] for all
+DAYS_AHEAD = 7  # e.g. 7 (check one week ahead), 14 (two weeks)
+TARGET_STATION = ""  # e.g. "Grill", "Desserts", or "" for all stations
+TARGET_ITEMS = ["Cheese Cake"]  # e.g. ["Chocolate Cake"], ["BBQ", "Pizza"] (case-insensitive partial match)
+TARGET_MEALS = ["lunch"]  # e.g. ["Lunch"], ["Lunch", "Dinner"], or [] for all meals
 
 
 def find_items_at_station(soup):
