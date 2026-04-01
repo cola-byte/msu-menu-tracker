@@ -2,6 +2,7 @@ import os
 import smtplib
 import sys
 from datetime import date, timedelta
+from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from urllib.parse import quote
 
@@ -33,13 +34,14 @@ LOCATIONS = [
 ]
 DAYS_AHEAD = 7
 TARGET_STATION = ""
-TARGET_ITEM = "Chocolate Cake"
+TARGET_ITEMS = ["Chocolate Cake"]  # e.g. ["Chocolate Cake", "BBQ", "Pizza"]
 TARGET_MEALS = []  # e.g. ["Breakfast"], ["Lunch", "Dinner"], or [] for all
 
 
-def find_item_at_station(soup):
-    """Return dict of {station/period: [item_names]} where TARGET_ITEM matches."""
-    matches = {}  # key: "Station / Period", value: list of matching item names
+def find_items_at_station(soup):
+    """Return dict of {station/period: [item_names]} where any TARGET_ITEMS match."""
+    # matches: { "Station / Period": [item_names] }
+    matches = {}
 
     for group in soup.find_all("div", class_="eas-view-group"):
         h3 = group.find("h3")
@@ -58,11 +60,38 @@ def find_item_at_station(soup):
 
             for title_div in eas_list.find_all("div", class_="meal-title"):
                 item_name = title_div.get_text(strip=True)
-                if TARGET_ITEM.lower() in item_name.lower():
+                if any(t.lower() in item_name.lower() for t in TARGET_ITEMS):
                     key = f"{station_name} / {period}"
                     matches.setdefault(key, []).append(item_name)
 
     return matches
+
+
+def merge_periods(day_matches):
+    """
+    Merge Lunch+Dinner entries for the same location+station+items into one line.
+
+    Input:  { "Location > Station / Lunch": [items], "Location > Station / Dinner": [items] }
+    Output: { "Location > Station": { "periods": "Lunch & Dinner", "items": [items] } }
+    """
+    # Group by (location, station, frozenset of items)
+    groups = {}
+    for full_key, items in day_matches.items():
+        # full_key format: "Location > Station / Period"
+        loc_station, period = full_key.rsplit(" / ", 1)
+        group_key = (loc_station, tuple(sorted(set(items))))
+        groups.setdefault(group_key, []).append(period)
+
+    merged = {}
+    for (loc_station, items_tuple), periods in groups.items():
+        periods_sorted = sorted(periods, key=lambda p: ["Breakfast", "Lunch", "Dinner"].index(p) if p in ["Breakfast", "Lunch", "Dinner"] else 99)
+        if len(periods_sorted) > 1:
+            periods_str = " & ".join(periods_sorted)
+        else:
+            periods_str = periods_sorted[0]
+        merged[loc_station] = {"periods": periods_str, "items": list(items_tuple)}
+
+    return merged
 
 
 def check_dates():
@@ -73,7 +102,7 @@ def check_dates():
     for i in range(DAYS_AHEAD):
         check_date = today + timedelta(days=i)
         date_str = check_date.strftime("%Y-%m-%d")
-        friendly = check_date.strftime("%A, %B %#d")
+        friendly = f"{check_date.strftime('%a')} {check_date.month}/{check_date.day}"
         day_matches = {}
 
         for location in LOCATIONS:
@@ -87,7 +116,7 @@ def check_dates():
                 continue
 
             soup = BeautifulSoup(response.text, "html.parser")
-            matches = find_item_at_station(soup)
+            matches = find_items_at_station(soup)
 
             for key, items in matches.items():
                 full_key = f"{location} > {key}"
@@ -95,11 +124,38 @@ def check_dates():
                 print(f"  Found: {friendly} — {full_key}: {', '.join(items)}")
 
         if day_matches:
-            results.append((friendly, day_matches))
+            results.append((friendly, merge_periods(day_matches)))
         else:
             print(f"  No target items found: {date_str}")
 
     return results
+
+
+def build_email_body(results):
+    items_label = " / ".join(TARGET_ITEMS)
+
+    plain_lines = [f"{items_label} is available on the following days:\n"]
+    html_lines = [
+        "<html><body>",
+        f"<p><b>{items_label}</b> is available on the following days:</p>",
+        "<ul style='list-style:none; padding:0;'>",
+    ]
+
+    for friendly_date, merged in results:
+        plain_lines.append(f"• {friendly_date}")
+        html_lines.append(f"  <li style='margin-top:10px;'><b>{friendly_date}</b><ul style='list-style:none; padding-left:16px;'>")
+
+        for loc_station, info in merged.items():
+            periods = info["periods"]
+            items_str = ", ".join(info["items"])
+            plain_lines.append(f"    {loc_station} ({periods}): {items_str}")
+            html_lines.append(f"    <li>{loc_station} <span style='color:#666;'>({periods})</span>: {items_str}</li>")
+
+        html_lines.append("  </ul></li>")
+
+    html_lines += ["</ul>", "</body></html>"]
+
+    return "\n".join(plain_lines), "\n".join(html_lines)
 
 
 def send_email(results):
@@ -107,18 +163,16 @@ def send_email(results):
         print("Email credentials not configured in .env — skipping email.")
         return
 
-    lines = [f"{TARGET_ITEM} is available on the following days:\n"]
-    for friendly_date, matches in results:
-        lines.append(f"• {friendly_date}")
-        for key, items in matches.items():
-            lines.append(f"    {key}: {', '.join(items)}")
-    body = "\n".join(lines)
+    plain_body, html_body = build_email_body(results)
 
-    msg = MIMEText(body)
-    msg["Subject"] = f"MSU Menu Alert: {TARGET_ITEM}"
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = f"MSU Menu Alert: {' / '.join(TARGET_ITEMS)}"
     msg["From"] = GMAIL_USER
     recipients = [r.strip() for r in NOTIFY_TO.split(",")]
     msg["To"] = ", ".join(recipients)
+
+    msg.attach(MIMEText(plain_body, "plain"))
+    msg.attach(MIMEText(html_body, "html"))
 
     try:
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
